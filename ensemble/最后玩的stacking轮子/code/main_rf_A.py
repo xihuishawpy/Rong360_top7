@@ -78,7 +78,7 @@ def printfilcsve(X, filename):
 def rf_param(k):
     random_seed = range(2017)
     criterion = ['entropy','gini']
-    n_estimators = [i for i in range(300,500,10)]
+    n_estimators = list(range(300,500,10))
     max_depth = [5,6,7,8]
     #class_weight = [i/100.0 for i in range(200,600,30)]
     max_features = [i/1000.0 for i in range(350,550,10)]
@@ -91,29 +91,35 @@ def rf_param(k):
     random.shuffle(max_features)
     random.shuffle(min_samples_leaf)
 
-    model = rf_model(n_estimators[k],criterion[k%2],max_depth[k%4],max_features[k],min_samples_leaf[k])#,class_weight[k]
-    return model
+    return rf_model(
+        n_estimators[k],
+        criterion[k % 2],
+        max_depth[k % 4],
+        max_features[k],
+        min_samples_leaf[k],
+    )
 
 def rf_model(n_estimators=300,criterion='entropy',max_depth=6,max_features=0.5,min_samples_leaf=50):#,class_weight=6
-    model=	RandomForestClassifier(n_estimators=n_estimators,n_jobs=-1,criterion=criterion,min_samples_leaf=min_samples_leaf,class_weight='balanced',
-	max_features=max_features,max_depth=max_depth)
-
-    return model
+    return RandomForestClassifier(
+        n_estimators=n_estimators,
+        n_jobs=-1,
+        criterion=criterion,
+        min_samples_leaf=min_samples_leaf,
+        class_weight='balanced',
+        max_features=max_features,
+        max_depth=max_depth,
+    )
 
 def main():
     
     filename="H:\\ET/model/main_rf_A_20170220" # nam prefix
-    #model = linear_model.LogisticRegression(C=3)  # the classifier we'll use
-    
-    # === load data in memory === #
-    print "loading data"
-
+    filename="H:\\ET/model/main_rf_A_20170220" # nam prefix
     train = pd.read_csv("H:\\ET/data/train_flit.csv")
     test = pd.read_csv("H:\\ET/data/test_flit.csv")
     train[train>10000000000] = 0
     test[test>10000000000] = 0
 
-    overdue_train = pd.read_csv("H:\\ET/data/overdue_train.csv") 
+    overdue_train = pd.read_csv("H:\\ET/data/overdue_train.csv")
     overdue_train = overdue_train.rename(columns={'user_id':'userid'})
     train = pd.merge(train,overdue_train,on='userid',how='left')
     scoreDir = 'H:\\ET/feature_score'
@@ -125,16 +131,15 @@ def main():
     X_test = test[fea_set[range(0,len(fea_set),2)]].values
 
     #create arrays to hold cv an dtest predictions
-    train_stacker=[ 0.0  for k in range (0,(X.shape[0])) ] 
+    train_stacker = [0.0 for _ in range(X.shape[0])] 
 
     # === training & metrics === #
     mean_auc = 0.0
     mean_ks = 0.0
     bagging=3 # number of models trained with different seeds
     n = 4  # number of folds in strattified cv
-    kfolder=StratifiedKFold(y, n_folds= n,shuffle=True, random_state=1)     
-    i=0
-    for train_index, test_index in kfolder: # for each train and test pair of indices in the kfolder object
+    kfolder=StratifiedKFold(y, n_folds= n,shuffle=True, random_state=1)
+    for train_index, test_index in kfolder:
         # creaning and validation sets
         X_train, X_cv = X[train_index], X[test_index]
         y_train, y_cv = np.array(y)[train_index], np.array(y)[test_index]
@@ -142,29 +147,26 @@ def main():
 
         # train model and make predictions 
         preds=bagged_set(X_train,y_train, bagging, X_cv)   
-        
+
 
         # compute AUC metric for this CV fold
         roc_auc = roc_auc_score(y_cv, preds)
         ks = ks_score(preds,y_cv)
-        print "AUC (fold %d/%d): %f" % (i + 1, n, roc_auc)
-        print "KS (fold %d/%d): %f" % (i + 1, n, ks)
+        # creaning and validation sets
+        X_train, X_cv = X[train_index], X[test_index]
+        # creaning and validation sets
+        X_train, X_cv = X[train_index], X[test_index]
         mean_auc += roc_auc
         mean_ks += ks
-        no=0
-        for real_index in test_index:
-                 train_stacker[real_index]=(preds[no])
-                 no+=1
-        i+=1
-        
-
+        for no, real_index in enumerate(test_index):
+            train_stacker[real_index]=(preds[no])
     mean_auc/=n
     mean_ks/=n
     print (" Average AUC: %f" % (mean_auc) )
     print (" Average ks: %f" % (mean_ks) )
     print (" printing train datasets ")
-    #printfilcsve(np.array(train_stacker), filename + ".train.csv")          
-    save_results(np.array(train_stacker), filename + ".train.csv")
+    #printfilcsve(np.array(train_stacker), filename + ".train.csv")
+    save_results(np.array(train_stacker), f"{filename}.train.csv")
     # === Predictions === #
     # When making predictions, retrain the model on the whole training set
     preds=bagged_set(X, y, bagging, X_test)  
@@ -172,7 +174,7 @@ def main():
     #create submission file 
     #printfilcsve(np.array(preds), filename+ ".test.csv")  
     #save_results(preds, filename +str(mean_auc) + ".valid.csv")
-    save_results(preds, filename+"_submission_" +str(mean_ks) + ".test.csv")
+    save_results(preds, f"{filename}_submission_{mean_ks}.test.csv")
 
 def ks_score(pred,real):
     from sklearn.metrics import roc_curve  

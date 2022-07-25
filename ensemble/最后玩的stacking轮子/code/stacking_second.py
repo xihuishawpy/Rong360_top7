@@ -25,18 +25,17 @@ from sklearn.linear_model import LogisticRegressionCV,LogisticRegression
 
 def loadcolumn(filename,col=4, skip=1, floats=True):
     pred=[]
-    op=open(filename,'r')
-    if skip==1:
-        op.readline() #header
-    for line in op:
-        line=line.replace('\n','')
-        sps=line.split(',')
-        #load always the last columns
-        if floats:
-            pred.append(float(sps[col]))
-        else :
-            pred.append(str(sps[col]))
-    op.close()
+    with open(filename,'r') as op:
+        if skip==1:
+            op.readline() #header
+        for line in op:
+            line=line.replace('\n','')
+            sps=line.split(',')
+            #load always the last columns
+            if floats:
+                pred.append(float(sps[col]))
+            else :
+                pred.append(str(sps[col]))
     return pred            
 
 
@@ -142,161 +141,149 @@ def add_origin_feature(X, X_test): # add your original feature
 
 def main():
 
-        load_data=True          
-        SEED=25
-        Use_scale=False # if we want to use standard scaler on the data, scale when lr
-        #meta_folder="" # this is how you name the foler that keeps the held-out and test predictions to be used later for meta modelling
-        # least of meta models. All the train held out predictions end with a 'train.csv' notation while all test set predictions with a 'test.csv'
-        meta=["main_xgb_1_final","main_xgb_2_final","main_et_A_final","main_et_B_final","main_rf_1_final","main_rf_2_final"]
+    load_data=True
+    SEED=25
+    Use_scale=False # if we want to use standard scaler on the data, scale when lr
+    #meta_folder="" # this is how you name the foler that keeps the held-out and test predictions to be used later for meta modelling
+    # least of meta models. All the train held out predictions end with a 'train.csv' notation while all test set predictions with a 'test.csv'
+    meta=["main_xgb_1_final","main_xgb_2_final","main_et_A_final","main_et_B_final","main_rf_1_final","main_rf_2_final"]
 		# meta=["main_xgb_1","main_xgb_2","main_et_A","main_et_B","main_rf_1","main_rf_2"] 
-		
-        bags=5 # helps to avoid overfitting. Istead of 1, we ran 10 models with differnt seed and different shuffling
-        ######### Load files (...or not!) ############
-        print 'load meta data'
-        meta_folder = 'H:\\ET\\\stack/'
-        overdue_train = pd.read_csv(meta_folder+'overdue_train.csv')
-        overdue_train = overdue_train.rename(columns={'user_id':'userid'})
-        user_train = pd.read_csv(meta_folder+'main_.trainusermap.csv')
-        user_train = pd.merge(user_train,overdue_train,on='userid',how='left')
-        user_test = pd.read_csv(meta_folder+'main_.testusermap.csv')
-        y = user_train.label.values
+
+    bags=5 # helps to avoid overfitting. Istead of 1, we ran 10 models with differnt seed and different shuffling
+    load_data=True
+    meta_folder = 'H:\\ET\\\stack/'
+    overdue_train = pd.read_csv(f'{meta_folder}overdue_train.csv')
+    overdue_train = overdue_train.rename(columns={'user_id':'userid'})
+    user_train = pd.read_csv(f'{meta_folder}main_.trainusermap.csv')
+    user_train = pd.merge(user_train,overdue_train,on='userid',how='left')
+    user_test = pd.read_csv(f'{meta_folder}main_.testusermap.csv')
+    y = user_train.label.values
         #y = np.loadtxt("train.csv", delimiter=',',usecols=[0], skiprows=1)
-        if load_data:
-            Xmetatrain=None
-            Xmetatest=None     
-            for modelname in meta :
-                    mini_xtrain=pd.read_csv(meta_folder + modelname + '.train.csv') # we load the held out prediction of the int'train.csv' model
-                    mini_xtest=pd.read_csv(meta_folder + modelname + '.test.csv')   # we load the test set prediction of the int'test.csv' model
-                    mean_train=np.mean(mini_xtrain.ACTION.values) # we calclaute the mean of the train set held out predictions for reconciliation purposes
-                    mean_test=np.mean(mini_xtest.ACTION.values)    # we calclaute the mean of the test set  predictions  
-					
-                    # we print the AUC and the means and we still hope that everything makes sense. Eg. the mean of the train set preds is 1232314.34 and the test is 0.7, there is something wrong... 
-                    print("model %s auc %f ks %f mean train/test %f/%f " % (modelname,roc_auc_score(np.array(y),mini_xtrain.ACTION.values) ,
-                    ks_score(mini_xtrain.ACTION.values,np.array(y)), mean_train,mean_test)) 
-                    if Xmetatrain==None:
-                        Xmetatrain=mini_xtrain.ACTION.values
-                        Xmetatest=mini_xtest.ACTION.values
-                    else :
-                        Xmetatrain=np.column_stack((Xmetatrain,mini_xtrain.ACTION.values))
-                        Xmetatest=np.column_stack((Xmetatest,mini_xtest.ACTION.values))
-            # here we can create some cross features by metafeature, and combine some most important raw features !!!
-            Xmetatrain,Xmetatest = add_cross_feature(Xmetatrain,Xmetatest)
+    if load_data:
+        Xmetatrain=None
+        Xmetatest=None
+        for modelname in meta:
+            mini_xtrain=pd.read_csv(meta_folder + modelname + '.train.csv') # we load the held out prediction of the int'train.csv' model
+            mini_xtest=pd.read_csv(meta_folder + modelname + '.test.csv')   # we load the test set prediction of the int'test.csv' model
+            mean_train=np.mean(mini_xtrain.ACTION.values) # we calclaute the mean of the train set held out predictions for reconciliation purposes
+            mean_test=np.mean(mini_xtest.ACTION.values)    # we calclaute the mean of the test set  predictions  
+
+            # we print the AUC and the means and we still hope that everything makes sense. Eg. the mean of the train set preds is 1232314.34 and the test is 0.7, there is something wrong... 
+            print("model %s auc %f ks %f mean train/test %f/%f " % (modelname,roc_auc_score(np.array(y),mini_xtrain.ACTION.values) ,
+            ks_score(mini_xtrain.ACTION.values,np.array(y)), mean_train,mean_test))
+            if Xmetatrain is None:
+                Xmetatrain=mini_xtrain.ACTION.values
+                Xmetatest=mini_xtest.ACTION.values
+            else:
+                Xmetatrain=np.column_stack((Xmetatrain,mini_xtrain.ACTION.values))
+                Xmetatest=np.column_stack((Xmetatest,mini_xtest.ACTION.values))
+        # here we can create some cross features by metafeature, and combine some most important raw features !!!
+        Xmetatrain,Xmetatest = add_cross_feature(Xmetatrain,Xmetatest)
 			#Xmetatrain,Xmetatest = add_origin_feature(Xmetatrain,Xmetatest)
-            # we combine with the stacked features
-            X=Xmetatrain
-            X_test=Xmetatest 
-            print X.shape
+        # we combine with the stacked features
+        X=Xmetatrain
+        X_test=Xmetatest
+        Xmetatrain=None
             # we print the pickles
-            printfile(X,meta_folder+"xmetahome.pkl")  
-            printfile(X_test,meta_folder+"xtmetahome.pkl")     
+        printfile(X, f"{meta_folder}xmetahome.pkl")
+        printfile(X_test, f"{meta_folder}xtmetahome.pkl")     
 
-            X=load_datas(meta_folder+"xmetahome.pkl")              
-            print("rows %d columns %d " % (X.shape[0],X.shape[1] ))
-            #X_test=load_datas("onegramtest.pkl")
-            #print("rows %d columns %d " % (X_test.shape[0],X_test.shape[1] ))                   
-        else :
+                #X_test=load_datas("onegramtest.pkl")
+                #print("rows %d columns %d " % (X_test.shape[0],X_test.shape[1] ))                   
+    X = load_datas(f"{meta_folder}xmetahome.pkl")
+    print("rows %d columns %d " % (X.shape[0],X.shape[1] ))
+    outset="loan_stacking" # Name of the model (quite catchy admitedly)
+    number_of_folds =4 # repeat the CV procedure 5 times and save the holdout predictions
 
-            X=load_datas(meta_folder+"xmetahome.pkl")              
-            print("rows %d columns %d " % (X.shape[0],X.shape[1] ))
-            #X_test=load_datas("onegramtest.pkl")
-            #print("rows %d columns %d " % (X_test.shape[0],X_test.shape[1] ))    
-            
-        
-        outset="loan_stacking" # Name of the model (quite catchy admitedly)
-        number_of_folds =4 # repeat the CV procedure 5 times and save the holdout predictions
+    print("len of target=%d" % (len(y))) # print the length of the target variable because we can
 
-        print("len of target=%d" % (len(y))) # print the length of the target variable because we can
-        
-        #model we are going to use                      
-        model=ExtraTreesClassifier(n_estimators=5000, criterion='entropy', max_depth=6,  min_samples_leaf=1, max_features=8, n_jobs=-1, random_state=1)        
+    #model we are going to use                      
+    model=ExtraTreesClassifier(n_estimators=5000, criterion='entropy', max_depth=6,  min_samples_leaf=1, max_features=8, n_jobs=-1, random_state=1)
         #model=LogisticRegression(C=0.01)
-        train_stacker=[ 0.0  for k in range (0,(X.shape[0])) ] # the object to hold teh held-out preds
-        
+    train_stacker = [0.0 for _ in range(X.shape[0])]
+
+    mean_ks = 0.0
+    # cross validation model we are going to use
+    kfolder=StratifiedKFold(y, n_folds=number_of_folds,shuffle=True, random_state=SEED)
+    print ("starting cross validation with %d kfolds " % (number_of_folds)) # some words to keep you engaged
+    if number_of_folds>0: # this basically means "if we are doing cross validation ", sometimes my model crashed after cv and I had to skip this part in 2nd iteration
         # CHECK EVerything in five..it could be more efficient     
-        
+
         #Will hold the average AUC value. I leave it as 'mean_kapa' as I copied the code from the Flower competition.
         #(Always re-use old good code.) Pepperidge Farm remembers.     
-        mean_auc = 0.0 
-        mean_ks = 0.0
-        # cross validation model we are going to use
-        kfolder=StratifiedKFold(y, n_folds=number_of_folds,shuffle=True, random_state=SEED)       
-        i=0 # iterator counter
-        print ("starting cross validation with %d kfolds " % (number_of_folds)) # some words to keep you engaged
-        if number_of_folds>0: # this basically means "if we are doing cross validation ", sometimes my model crashed after cv and I had to skip this part in 2nd iteration
-            for train_index, test_index in kfolder:
-                # get train (set and target variable)
-                X_train = X[train_index]    
-                y_train= np.array(y)[train_index]
-                #talk about it
-                print (" train size: %d. test size: %d, cols: %d " % (len(train_index) ,len(test_index) ,(X_train.shape[1]) ))
+        mean_auc = 0.0
+        for i, (train_index, test_index) in enumerate(kfolder):
+            # get train (set and target variable)
+            X_train = X[train_index]
+            y_train= np.array(y)[train_index]
+            #talk about it
+            print (" train size: %d. test size: %d, cols: %d " % (len(train_index) ,len(test_index) ,(X_train.shape[1]) ))
 
-                if Use_scale:
-                    stda=StandardScaler()            
-                    X_train=stda.fit_transform(X_train)
+            if Use_scale:
+                stda=StandardScaler()            
+                X_train=stda.fit_transform(X_train)
 
-                # get validation (set and target variable)
-                X_cv= X[test_index]
-                y_cv = np.array(y)[test_index]
-                
-                if Use_scale:
-                    X_cv=stda.transform(X_cv)
-                
-                # bag 10 models of the selected type :)
-                preds=bagged_set(X_train,y_train,model, SEED + i, bags, X_cv, update_seed=True)
-                # measure AUC, but keep confusing everyone by naming "kapa"
-                auc = roc_auc_score(y_cv,preds)                        
-                ks = ks_score(preds,y_cv)
-                # talk about it, hoping people will not actually find out about it
-                print "size train: %d size cv: %d AUC (fold %d/%d): %f" % (len(train_index), len(test_index), i + 1, number_of_folds, auc)
-                print "size train: %d size cv: %d AUC (fold %d/%d): %f" % (len(train_index), len(test_index), i + 1, number_of_folds, ks)
-                mean_auc += auc
-                mean_ks += ks
-                
-                #update the held-out array for meta modelling
-                no=0
-                for real_index in test_index:
-                         train_stacker[real_index]=(preds[no])
-                         no+=1
-                i+=1 # update iterator
-                
-            if (number_of_folds)>0: # if we did cross validation the print the results
-                mean_auc/=number_of_folds
-                mean_ks/=number_of_folds
-                print (" Average AUC: %f" % (mean_auc) ) # keep calling it AUC (because you can)
-                print (" Average KS: %f" % (mean_ks) ) # keep calling it KS (because you can)
-               
-            #print (" printing train datasets in %s" % (meta_folder+ outset + "train.csv")) # print the hold out predictions
+            # get validation (set and target variable)
+            X_cv= X[test_index]
+            y_cv = np.array(y)[test_index]
+
+            if Use_scale:
+                X_cv=stda.transform(X_cv)
+
+            # bag 10 models of the selected type :)
+            preds=bagged_set(X_train,y_train,model, SEED + i, bags, X_cv, update_seed=True)
+            # measure AUC, but keep confusing everyone by naming "kapa"
+            auc = roc_auc_score(y_cv,preds)
+            ks = ks_score(preds,y_cv)
+            # get train (set and target variable)
+            X_train = X[train_index]
+            # get train (set and target variable)
+            X_train = X[train_index]
+            mean_auc += auc
+            mean_ks += ks
+
+            for no, real_index in enumerate(test_index):
+                train_stacker[real_index]=(preds[no])
+        mean_auc/=number_of_folds
+        mean_ks/=number_of_folds
+        print (" Average AUC: %f" % (mean_auc) ) # keep calling it AUC (because you can)
+        print (" Average KS: %f" % (mean_ks) ) # keep calling it KS (because you can)
+                   
+                #print (" printing train datasets in %s" % (meta_folder+ outset + "train.csv")) # print the hold out predictions
 
 
-        print ("start final modeling")
-        
-        if Use_scale:
-            stda=StandardScaler()            
-            X=stda.fit_transform(X)
+    print ("start final modeling")
+
+    if Use_scale:
+        stda=StandardScaler()            
+        X=stda.fit_transform(X)
 
 
-        #load test data
-        X_test=load_datas("xtmetahome.pkl")
-        if Use_scale:
-            X_test=stda.transform(X_test) 
-            
-        # giving stats never gets old
-        print("rows %d columns %d " % (X_test.shape[0],X_test.shape[1] ))
-        # bag 10 models of the selected type :)
-        preds=bagged_set(X, y,model, SEED, bags, X_test, update_seed=True)          
+    #load test data
+    X_test=load_datas("xtmetahome.pkl")
+    if Use_scale:
+        X_test=stda.transform(X_test) 
 
-        
-        X_test=None
-        gc.collect()  # collect the garbage   
-        #load the id variable to put it in the submission file (if we ant to submit this model in kaggle)
-        
-        #print (" printing test datasets in %s" % (meta_folder + outset + "test.csv"))          
-        
-        #save_results(preds, outset+"_submission_" +str(mean_ks) + ".test.csv")     
-        user_test['probability'] = preds
-        user_test = user_test.drop('id',axis=1)
-        user_test.to_csv(outset+"_submission_final_1_cross_" +str(mean_ks) + ".csv",index=False)
-        print("Done.")  
+    # giving stats never gets old
+    print("rows %d columns %d " % (X_test.shape[0],X_test.shape[1] ))
+    # bag 10 models of the selected type :)
+    preds=bagged_set(X, y,model, SEED, bags, X_test, update_seed=True)          
+
+
+    X_test=None
+    gc.collect()  # collect the garbage   
+    #load the id variable to put it in the submission file (if we ant to submit this model in kaggle)
+
+    #print (" printing test datasets in %s" % (meta_folder + outset + "test.csv"))          
+
+    #save_results(preds, outset+"_submission_" +str(mean_ks) + ".test.csv")     
+    user_test['probability'] = preds
+    user_test = user_test.drop('id',axis=1)
+    user_test.to_csv(
+        f"{outset}_submission_final_1_cross_{str(mean_ks)}.csv", index=False
+    )
+
+    print("Done.")  
 
 def ks_score(pred,real):
     from sklearn.metrics import roc_curve  

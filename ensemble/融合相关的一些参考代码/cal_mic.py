@@ -4,6 +4,7 @@ calculate the mic of two result
 """
 
 
+
 import pandas as pd
 import numpy as np
 from minepy import MINE
@@ -11,8 +12,7 @@ from minepy import MINE
 fs = ['discret_5','R_7199','rank','discret_10','raw_rank','Py_717','Py_725','svm_6938']
 
 #对预测结果进行最大信息系数（MIC）计算  直观的观察单模型之间的差异性
-res = []
-res.append(pd.read_csv('./avg_xgbs_discret_feature_5.csv').score.values)
+res = [pd.read_csv('./avg_xgbs_discret_feature_5.csv').score.values]
 res.append(pd.read_csv('./R_7199.csv').score.values)
 res.append(pd.read_csv('./rank_feature_xgb_ensemble.csv').score.values)
 res.append(pd.read_csv('./avg_xgbs_discret_feature_10.csv').score.values)
