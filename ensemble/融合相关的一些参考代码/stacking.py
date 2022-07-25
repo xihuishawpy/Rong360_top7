@@ -134,7 +134,7 @@ def run():
     print
     print ("Blending.")
     clf = LogisticRegression()
-    
+
     clf.fit(dataset_blend_train, y)
     y_submission = clf.predict_proba(dataset_blend_test)[:, 1]
 
@@ -142,7 +142,7 @@ def run():
     y.to_csv('H:\\ML\\DC\\user_loan_risk_predict\\predict/y.csv',index=False)
     y_submission.to_csv('H:\\ML\\DC\\user_loan_risk_predict\\predict/y_submission.csv',index=False)
     X_user_id.to_csv('H:\\ML\\DC\\user_loan_risk_predict\\predict/X_user_id.csv',index=False)
-	
+
     print ("Linear stretch of predictions to [0,1]")
     y_submission = (y_submission - y_submission.min()) / (y_submission.max() - y_submission.min())
 
